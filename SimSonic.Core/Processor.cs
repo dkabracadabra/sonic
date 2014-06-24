@@ -4,8 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Windows.Media.Media3D;
 using Common.Logging;
-using TCD.Mathematics;
 
 namespace SimSonic.Core
 {
@@ -119,7 +119,7 @@ namespace SimSonic.Core
             }
         }
 
-        public List<double> GetResearchValues(IResearchSet researchSet, double waveTime, double time)
+        public List<double> GetResearchValues(IResearchSet researchSet, double inpulseTime, double time)
         {
             List<double> result = null;
             using (var cs = new CancellationTokenSource())
@@ -136,7 +136,7 @@ namespace SimSonic.Core
                                                                                   _signals.Sum(s =>
                                                                                                GetValue(
                                                                                                    s.Frequency,
-                                                                                                   waveTime,
+                                                                                                   inpulseTime,
                                                                                                    s.Phase,
                                                                                                    s.Amplitude * it.ValuePerDomain,
                                                                                                    time,
@@ -468,7 +468,7 @@ namespace SimSonic.Core
 
         #endregion
 
-        public static double GetValue(double freq, double waveTime, double phase, double amplitude, double time, double delay, Point3D targetPoint, List<ProcessorTrace> traces)
+        public static double GetValue(double freq, double impulseTime, double phase, double amplitude, double time, double delay, Point3D targetPoint, List<ProcessorTrace> traces)
         {
             var sum = 0d;
             foreach (var trace in traces)
@@ -480,7 +480,7 @@ namespace SimSonic.Core
                     continue;
                 if (travelTime < trace.TimeToPoint)
                     continue;
-                if (travelTime > trace.TimeToPoint + waveTime)
+                if (travelTime > trace.TimeToPoint + impulseTime)
                     continue;
 
                 var amp = amplitude;
@@ -530,54 +530,6 @@ namespace SimSonic.Core
     }
 
 
-    
-
-    public interface IResearchSet
-    {
-        IList<Point3D> PointsInternal { get; }
-    }
-
-
-    public enum AlignAxis
-    {
-        X, Y, Z
-    }
-
-    public class ResearchSetBase : IResearchSet
-    {
-        public IList<Point3D> PointsInternal { get; protected set; }
-    }
-
-    public class ResearchSetAxisAligned : ResearchSetBase
-    {
-        public ResearchSetAxisAligned(AlignAxis axis, Rect3D plainRect, Double stepX, Double stepY)
-        {
-            var toX = plainRect.X + plainRect.SizeX;
-            var toY = plainRect.Y + plainRect.SizeY;
-            var axisValue = plainRect.Z;
-            switch (axis)
-            {
-                case AlignAxis.X:  //yz
-                    for (Double curX = 0; curX < toX; curX += stepX)
-                        for (Double curY = 0; curY < toY; curY += stepY)
-                            PointsInternal.Add(new Point3D(axisValue, curX, curY));
-                    break;
-                case AlignAxis.Y:   //xz
-                    for (Double curX = 0; curX < toX; curX += stepX)
-                        for (Double curY = 0; curY < toY; curY += stepY)
-                            PointsInternal.Add(new Point3D(curX, axisValue, curY));
-                    break;
-                case AlignAxis.Z:   //xy
-                    for (Double curX = 0; curX < toX; curX += stepX)
-                        for (Double curY = 0; curY < toY; curY += stepY)
-                            PointsInternal.Add(new Point3D(curX, curY, axisValue));
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException("axis");
-            }
-        }
-    }
-
     class ProcessorSolverVars
     {
         public double H;
@@ -587,13 +539,7 @@ namespace SimSonic.Core
         public ProcessorLayerEx PrevLayer;
     }
 
-    public class ProcessorSignal
-    {
-        public double Frequency;
-        public double Phase;
-        public double Amplitude;
-    }
-
+    
     public class ProcessorTraceResult
     {
         public ProcessorLayer PointLayer;
@@ -619,19 +565,12 @@ namespace SimSonic.Core
         public ProcessorLayerEx ReflectionLayer;
         public ProcessorLayerEx PrevLayer;
     }
-
-    public class ProcessorLayer
+    public class ProcessorRaidantEx : ProcessorRadiant
     {
-        /// <summary>
-        /// attenucation factor at Freq  * Freq
-        /// </summary>
-        public double AttenuationFreq;
-        public double AttenuationConstant;
-        public double Density;
-        public double WaveSpeed;
-        public bool IsSquareAttenuation;
-        
-        public double Thickness;
+        public List<Point3D> Domains;
+        public Vector3D Direction;
+        public double ValuePerDomain;
+
     }
 
     public class ProcessorLayerEx : ProcessorLayer
@@ -650,7 +589,7 @@ namespace SimSonic.Core
         public double ThicknessAfter;
 
         private readonly Dictionary<double, double> _cachedAttenuation = new Dictionary<double, double>();
-        
+
         public double GetAttenuationFactor(double freq)
         {
             double tmp;
@@ -664,37 +603,5 @@ namespace SimSonic.Core
         }
     }
 
-
-    public class ProcessorRadiant
-    {
-        public Point3D Position;
-        public double Radius;
-        public double Delay;
-        public double ValuePerDomain;
-    }
-
-
-
-    public class ProcessorRaidantEx : ProcessorRadiant
-    {
-        public List<Point3D> Domains;
-        public Vector3D Direction;
-        
-    }
-
-    public class ProcessorProject
-    {
-        public ProcessorProject()
-        {
-            Signals = new List<ProcessorSignal>();
-            Layers = new List<ProcessorLayer>();
-        }
-
-        public ICollection<ProcessorSignal> Signals { get; set; } 
-        public ICollection<ProcessorLayer> Layers { get; set; } 
-        public ICollection<ProcessorRadiant> Radiants { get; set; }
-        public Double SphereCutRadius { get; set; }
-        public Double SphereRadius { get; set; }
-
-    }
+    
 }
