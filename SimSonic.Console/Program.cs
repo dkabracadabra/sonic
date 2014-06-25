@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Company.Common;
 using SimSonic.Core;
 
 namespace SimSonic.Console
@@ -51,11 +52,27 @@ namespace SimSonic.Console
             var inpulseDuration = Double.Parse(inpulseDurationStr);
             var processor = new Processor();
             processor.Init(project);
+
+            var outputDirectory = Environment.CurrentDirectory;
+            var dir = Path.Combine(outputDirectory, DateTime.Now.ToString("yy-MM-dd_HH:mm:ss"));
+            Directory.CreateDirectory(dir);
+            var setNo = 0;
             foreach (var researchSetBase in project.ResearchSets)
             {
-                for (var i = timeFrom; i <= timeTo; i += timeStep)
+                setNo++;
+                for (var time = timeFrom; time <= timeTo; time += timeStep)
                 {
-                    var result = processor.GetResearchValues(researchSetBase, inpulseDuration, i);
+                    var result = processor.GetResearchValues(researchSetBase, inpulseDuration, time);
+                    var name = Path.Combine(dir, String.Format("Set{0:D2}_time{1}ms.csv", setNo, time));
+                    using (var fs = new StreamWriter(name, false))
+                    {
+                        for (var index = 0; index < researchSetBase.PointsInternal.Count; index++)
+                        {
+                            var point3D = researchSetBase.PointsInternal[index];
+                            fs.WriteLine("{0},{1},{2},{3}", point3D.X, point3D.Y, point3D.Z, result[index]);
+                        }
+                        fs.Flush();
+                    }
                 }
             }
 
