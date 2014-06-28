@@ -63,7 +63,7 @@ namespace SimSonic.Console
                 for (var time = timeFrom; time <= timeTo; time += timeStep)
                 {
                     var result = processor.GetResearchValues(researchSetBase, inpulseDuration, time);
-                    var name = Path.Combine(dir, String.Format("Set{0:D2}_time{1}ms.csv", setNo, time));
+                    var name = Path.Combine(dir, String.Format("Set{0:D2}_time{1}ms.csv", setNo, time*1e-3));
                     using (var fs = new StreamWriter(name, false))
                     {
                         for (var index = 0; index < researchSetBase.PointsInternal.Count; index++)
@@ -74,6 +74,13 @@ namespace SimSonic.Console
                         fs.Flush();
                     }
                 }
+            }
+            var data = new ProjectLoader().SaveToJson(project);
+            
+            using (var fs = new StreamWriter("Project.json", false))
+            {
+                fs.Write(data);   
+                fs.Flush();
             }
 
         }

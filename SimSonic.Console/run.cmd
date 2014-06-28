@@ -1,0 +1,1 @@
+﻿SimSonic.Console.exe --mode=csv --fileRadiants=sampleRadiants.csv --fileLayers=sampleLayers.csv --fileSignals=sampleSignals.csv --fileSphere=sampleSphere.csv --fileResearchSets=sampleResearchSet.csv --timeFrom=1e-3 --timeTo=2e-3 --timeStep=1e-3
