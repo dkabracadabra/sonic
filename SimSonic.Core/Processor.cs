@@ -25,7 +25,6 @@ namespace SimSonic.Core
         private int _reflectionDepth = 1;
         private static readonly Vector3D ZAxis = new Vector3D(0, 0, 1);
         private static readonly Vector3D XAxis = new Vector3D(1, 0, 0);
-        private static readonly double SolveInitialStep = Math.PI / 90.0; //2degrees
         private bool _isStopped = true;
 
         private CancellationTokenSource _cancellationTokenSource;
@@ -52,7 +51,9 @@ namespace SimSonic.Core
             _radiants.Clear();
             _signals.Clear();
             _layers.Clear();
-            _signals.AddRange(info.Signals.Select(it=>new ProcessorSignal{Amplitude = it.Amplitude, Frequency = it.Frequency, Phase = it.Phase}));
+            _signals.AddRange(
+                info.Signals.Select(
+                    it => new ProcessorSignal {Amplitude = it.Amplitude, Frequency = it.Frequency, Phase = it.Phase}));
             _sphereRadius = info.SphereRadius;
             _waveSpeed0 = info.Layers.First().WaveSpeed;
             _layers.AddRange(
@@ -119,39 +120,58 @@ namespace SimSonic.Core
             }
         }
 
-        public List<double> GetResearchValues(IResearchSet researchSet, double inpulseTime, double time)
+        public Double GetResearchValue(Point3D point, double inpulseTime, double time)
         {
-            List<double> result = null;
+            return _radiants.Sum(radiantProcessing(inpulseTime, time, CancellationToken.None, point));
+        }
+        public IEnumerable<double> GetResearchValues(IResearchSet researchSet, double inpulseTime, double time)
+        {
             using (var cs = new CancellationTokenSource())
             {
                 _cancellationTokenSource = cs;
                 try
                 {
-                    result = researchSet.PointsInternal.Select(point =>
-                                                           _radiants.Sum(it =>
-                                                                         it.Domains
-                                                                             .AsParallel().WithCancellation(cs.Token)
-                                                                             .Select(d => BuildTraces(_layers, d, point))
-                                                                             .Sum(tr =>
-                                                                                  _signals.Sum(s =>
-                                                                                               GetValue(
-                                                                                                   s.Frequency,
-                                                                                                   inpulseTime,
-                                                                                                   s.Phase,
-                                                                                                   s.Amplitude * it.ValuePerDomain,
-                                                                                                   time,
-                                                                                                   it.Delay,
-                                                                                                   point,
-                                                                                                   tr.Traces
-                                                                                                   )
-                                                                                      )
-                                                                             )
-                                                               )
-                        ).ToList();
+                    var c = cs;
+                    var enumerable = researchSet.GetPoints().Select(point =>
+                        _radiants.Sum(radiantProcessing(inpulseTime, time, c.Token, point)));
+                    foreach (var point in enumerable)
+                        yield return point;
+                }
+                finally
+                {
+                    _cancellationTokenSource = null;
+                }
+            }
+        }
+
+        private Func<ProcessorRaidantEx, double> radiantProcessing(double inpulseTime, double time, CancellationToken cst, Point3D point)
+        {
+            return it =>
+            {
+                try
+                {
+                    return it.Domains
+                        .AsParallel().WithCancellation(cst)
+                        .Select(d => BuildTraces(_layers, d, point))
+                        .Sum(tr =>
+                            _signals.Sum(s =>
+                                GetValue(
+                                    s.Frequency,
+                                    inpulseTime,
+                                    s.Phase,
+                                    s.Amplitude*it.ValuePerDomain,
+                                    time,
+                                    it.Delay,
+                                    point,
+                                    tr.Traces
+                                    )
+                                )
+                        );
                 }
                 catch (OperationCanceledException ce)
                 {
                     Log.Warn("GetResearchValues cancelled", ce);
+                    throw;
                 }
                 catch (AggregateException ae)
                 {
@@ -160,18 +180,11 @@ namespace SimSonic.Core
                         foreach (var e in ae.InnerExceptions)
                             Log.Warn("GetResearchValues aggregate inner exception", e);
                     }
+                    throw;
                 }
-                finally
-                {
-                    _cancellationTokenSource = null;
-                }
-            }
-            
-            return result;
+            };
 
         }
-
-
 
         #region radiant domains
         /// <summary>
@@ -295,7 +308,13 @@ namespace SimSonic.Core
                 pointLayer = layers[i];
                 pointLayerIndex = i;
 
-                vars.Add(new ProcessorSolverVars { C = pointLayer.RatioToLayer0, H = targetPoint.X - currentPos, Layer = pointLayer, PrevLayer = layers[i - 1] });
+                vars.Add(new ProcessorSolverVars
+                {
+                    C = pointLayer.RatioToLayer0,
+                    H = targetPoint.X - currentPos,
+                    Layer = pointLayer,
+                    PrevLayer = layers[i - 1]
+                });
 
                 var alpha = Solve(vars, angleToPoint, initialH);
                 if (alpha.HasValue)
@@ -443,9 +462,10 @@ namespace SimSonic.Core
             if (height == 0)
                 return 0;
             var prevDiff = 0d;
+            var initial = alpha;
             var iterations = 0;
-            var step = SolveInitialStep;
-
+            var step = alpha * 0.05;  //5 percent
+            var sign = 0;
             while (true)
             {
                 var h = GetHeight(vars, alpha);
@@ -460,8 +480,15 @@ namespace SimSonic.Core
                     alpha -= step;
                 else
                     alpha += step;
-                if (prevDiff >= 0 && diff < 0 || prevDiff <= 0 && diff > 0)
+                if (sign != 0 || prevDiff >= 0 && diff < 0 || prevDiff <= 0 && diff > 0)
+                {
                     step = step * 0.5;
+                    sign = 1;
+                }
+                else if (sign != 0)
+                {
+                    sign = 1;
+                }
                 prevDiff = diff;
             }
         }

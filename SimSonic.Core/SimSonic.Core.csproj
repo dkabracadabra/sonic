@@ -58,6 +58,7 @@
     <Compile Include="IResearchSet.cs" />
     <Compile Include="Processor.cs" />
     <Compile Include="ProcessorProject.cs" />
+    <Compile Include="ProjectLoader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ResearchRect.cs" />
     <Compile Include="ResearchSetBase.cs" />

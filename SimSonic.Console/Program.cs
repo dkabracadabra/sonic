@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Company.Common;
 using SimSonic.Core;
@@ -13,7 +15,9 @@ namespace SimSonic.Console
     {
         static void Main(string[] args)
         {
-
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+            Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
+            
             ProcessorProject project;
 
             var mode = args.FirstOrDefault(it => it.StartsWith("--mode=", StringComparison.OrdinalIgnoreCase));
@@ -34,27 +38,30 @@ namespace SimSonic.Console
             }
             else
             {
-                var filename = args.FirstOrDefault(it => it.StartsWith("--fileJson:", StringComparison.OrdinalIgnoreCase));
+                var filename = args.FirstOrDefault(it => it.StartsWith("--fileJson=", StringComparison.OrdinalIgnoreCase));
 
                 var json = File.ReadAllText(filename.Split(new[] { '=' }, 2)[1]);
 
                 project = new ProjectLoader().LoadFromJson(json);
             }
 
-            var timeFromStr = args.FirstOrDefault(it => it.StartsWith("--timeFrom:", StringComparison.OrdinalIgnoreCase)) ?? "--timeFrom:0";
-            var timeToStr = args.FirstOrDefault(it => it.StartsWith("--timeTo:", StringComparison.OrdinalIgnoreCase)) ?? timeFromStr;
-            var timeStepStr = args.FirstOrDefault(it => it.StartsWith("--timeStep:", StringComparison.OrdinalIgnoreCase));
-            var inpulseDurationStr = args.FirstOrDefault(it => it.StartsWith("--inpulseDuration:", StringComparison.OrdinalIgnoreCase))??timeToStr;
-
-            var timeFrom = Double.Parse(timeFromStr.Split(new[] { '=' }, 2)[1]);
-            var timeTo = Double.Parse(timeToStr.Split(new[] { '=' }, 2)[1]);
-            var timeStep = timeStepStr == null ? ((timeTo- timeFrom)/10.0) : Double.Parse(timeToStr.Split(new[] { '=' }, 2)[1]);
-            var inpulseDuration = Double.Parse(inpulseDurationStr);
+            var timeFromStr = args.FirstOrDefault(it => it.StartsWith("--timeFrom=", StringComparison.OrdinalIgnoreCase)) ?? "--timeFrom:0";
+            var timeToStr = args.FirstOrDefault(it => it.StartsWith("--timeTo=", StringComparison.OrdinalIgnoreCase)) ?? timeFromStr;
+            var timeStepStr = args.FirstOrDefault(it => it.StartsWith("--timeStep=", StringComparison.OrdinalIgnoreCase));
+            var impulseDurationStr = args.FirstOrDefault(it => it.StartsWith("--impulseDuration=", StringComparison.OrdinalIgnoreCase))??timeToStr;
+            var flushPointsStr = args.FirstOrDefault(it => it.StartsWith("--flushEveryNPoints=", StringComparison.OrdinalIgnoreCase)) ?? "--flushEveryNPoints=1000";
+            var flushPoints = Int32.Parse(flushPointsStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
+            var timeFrom = Double.Parse(timeFromStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
+            var timeTo = Double.Parse(timeToStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
+            var timeStep = timeStepStr == null
+                ? ((timeTo - timeFrom)/10.0)
+                : Double.Parse(timeToStr.Split(new[] {'='}, 2)[1], CultureInfo.InvariantCulture);
+            var impulseDuration = Double.Parse(impulseDurationStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
             var processor = new Processor();
             processor.Init(project);
 
             var outputDirectory = Environment.CurrentDirectory;
-            var dir = Path.Combine(outputDirectory, DateTime.Now.ToString("yy-MM-dd_HH:mm:ss"));
+            var dir = Path.Combine(outputDirectory, DateTime.Now.ToString("yy-MM-dd_HHmmss"));
             Directory.CreateDirectory(dir);
             var setNo = 0;
             foreach (var researchSetBase in project.ResearchSets)
@@ -62,22 +69,27 @@ namespace SimSonic.Console
                 setNo++;
                 for (var time = timeFrom; time <= timeTo; time += timeStep)
                 {
-                    var result = processor.GetResearchValues(researchSetBase, inpulseDuration, time);
                     var name = Path.Combine(dir, String.Format("Set{0:D2}_time{1}ms.csv", setNo, time*1e-3));
                     using (var fs = new StreamWriter(name, false))
                     {
-                        for (var index = 0; index < researchSetBase.PointsInternal.Count; index++)
+                        var pointsSinceFlush = 0;
+                        foreach (var point3D in researchSetBase.GetPoints())
                         {
-                            var point3D = researchSetBase.PointsInternal[index];
-                            fs.WriteLine("{0},{1},{2},{3}", point3D.X, point3D.Y, point3D.Z, result[index]);
+                            var val = processor.GetResearchValue(point3D, impulseDuration, time);
+                            fs.WriteLine("{0},{1},{2},{3}", point3D.X, point3D.Y, point3D.Z, val);
+                            if (++pointsSinceFlush > flushPoints)
+                            {
+                                pointsSinceFlush = 0;
+                                fs.Flush();
+                            }
                         }
                         fs.Flush();
                     }
                 }
             }
             var data = new ProjectLoader().SaveToJson(project);
-            
-            using (var fs = new StreamWriter("Project.json", false))
+
+            using (var fs = new StreamWriter(Path.Combine(dir, "Project.json"), false))
             {
                 fs.Write(data);   
                 fs.Flush();

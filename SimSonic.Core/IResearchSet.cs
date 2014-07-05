@@ -5,6 +5,7 @@ namespace SimSonic.Core
 {
     public interface IResearchSet
     {
-        IList<Point3D> PointsInternal { get; }
+        //IList<Point3D> PointsInternal { get; }
+        IEnumerable<Point3D> GetPoints();
     }
 }

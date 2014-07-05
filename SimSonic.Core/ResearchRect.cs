@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows.Media.Media3D;
 
 namespace SimSonic.Core
@@ -10,14 +11,12 @@ namespace SimSonic.Core
 
         public ResearchRect()
         {
-            
         }
 
-        public ResearchRect(Rect3D rect, Size3D steps)
+        public ResearchRect(Rect3D rect, Size3D steps) : this()
         {
             _rect = rect;
             _steps = steps;
-            Recalc();
         }
         public Rect3D Rect
         {
@@ -27,7 +26,6 @@ namespace SimSonic.Core
                 if (_rect == value)
                     return;
                 _rect = value;
-                Recalc();
             }
         }
 
@@ -39,12 +37,11 @@ namespace SimSonic.Core
                 if (_steps == value)
                     return;
                 _steps = value;
-                Recalc();
             }
         }
 
-        protected virtual void Recalc()
-        {
+        public override IEnumerable<Point3D> GetPoints()
+        {   
             var hX = (Steps.X == 0 || Rect.SizeX == 0) ? 0 : Math.Ceiling(.5 * Rect.SizeX / Steps.X) * Steps.X;
             var xFrom = Rect.X - hX;
             var xTo = Rect.X + hX;
@@ -58,7 +55,7 @@ namespace SimSonic.Core
             for (Double curX = xFrom; curX <= xTo; curX += Steps.X)
                 for (Double curY = yFrom; curY <= yTo; curY += Steps.Y)
                     for (Double curZ = zFrom; curZ <= zTo; curZ += Steps.Z)
-                        PointsInternal.Add(new Point3D(curX, curY, curZ));
+                        yield return new Point3D(curX, curY, curZ);
         }
     }
 }
