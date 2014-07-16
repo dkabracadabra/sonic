@@ -33,7 +33,9 @@ namespace SimSonic.Console
                 var sphere = File.ReadAllText(filename.Split(new[] { '=' }, 2)[1]);
                 filename = args.FirstOrDefault(it => it.StartsWith("--fileResearchSets=", StringComparison.OrdinalIgnoreCase));
                 var researchSets = File.ReadAllText(filename.Split(new[] { '=' }, 2)[1]);
-                project = new ProjectLoader().LoadFromCsv(radiants, layers, signals, sphere, researchSets);
+                filename = args.FirstOrDefault(it => it.StartsWith("--fileCommon=", StringComparison.OrdinalIgnoreCase));
+                var common = File.ReadAllText(filename.Split(new[] { '=' }, 2)[1]);
+                project = new ProjectLoader().LoadFromCsv(radiants, layers, signals, sphere, researchSets, common);
 
             }
             else
@@ -56,6 +58,8 @@ namespace SimSonic.Console
             var timeStep = timeStepStr == null
                 ? ((timeTo - timeFrom)/10.0)
                 : Double.Parse(timeToStr.Split(new[] {'='}, 2)[1], CultureInfo.InvariantCulture);
+            //correct time in relation with timeStep
+            timeTo = Math.Round((timeTo - timeFrom) / timeStep) * timeStep + timeFrom;
             var impulseDuration = Double.Parse(impulseDurationStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
             var processor = new Processor();
             processor.Init(project);

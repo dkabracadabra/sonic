@@ -1,0 +1,63 @@
+{
+  "Signals": [
+    {
+      "Frequency": 1000000.0,
+      "Phase": 0.0,
+      "Amplitude": 0.001
+    }
+  ],
+  "Layers": [
+    {
+      "Name": "Water",
+      "AttenuationFreq": 1000000.0,
+      "AttenuationConstant": 0.03,
+      "Density": 1000.0,
+      "WaveSpeed": 1500.0,
+      "IsSquareAttenuation": true,
+      "Thickness": 0.15
+    },
+    {
+      "Name": "Skin",
+      "AttenuationFreq": 1000000.0,
+      "AttenuationConstant": 40.0,
+      "Density": 1250.0,
+      "WaveSpeed": 1610.0,
+      "IsSquareAttenuation": false,
+      "Thickness": 0.002
+    },
+    {
+      "Name": "Fat",
+      "AttenuationFreq": 1000000.0,
+      "AttenuationConstant": 13.0,
+      "Density": 930.0,
+      "WaveSpeed": 1450.0,
+      "IsSquareAttenuation": false,
+      "Thickness": 0.02
+    },
+    {
+      "Name": "Muscles",
+      "AttenuationFreq": 1000000.0,
+      "AttenuationConstant": 20.0,
+      "Density": 1060.0,
+      "WaveSpeed": 1570.0,
+      "IsSquareAttenuation": false,
+      "Thickness": 0.02
+    }
+  ],
+  "Radiants": [
+    {
+      "Position": "0,0,0",
+      "Radius": 0.0045,
+      "Delay": 0.0
+    }
+  ],
+  "ResearchSets": [
+    {
+      "Rect": "0.175,0,0,0.06,0.03,0.03",
+      "Steps": "0.00025,0.00025,0.00025"
+    }
+  ],
+  "SphereCutRadius": 0.09,
+  "SphereRadius": 0.175,
+  "Reflections": 0
+}

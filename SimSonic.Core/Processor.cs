@@ -55,6 +55,8 @@ namespace SimSonic.Core
                 info.Signals.Select(
                     it => new ProcessorSignal {Amplitude = it.Amplitude, Frequency = it.Frequency, Phase = it.Phase}));
             _sphereRadius = info.SphereRadius;
+            _reflectionDepth = info.Reflections;
+
             _waveSpeed0 = info.Layers.First().WaveSpeed;
             _layers.AddRange(
                 info.Layers.Select(
@@ -66,7 +68,6 @@ namespace SimSonic.Core
                             IsSquareAttenuation = it.IsSquareAttenuation,
                             Density = it.Density,
                             WaveSpeed = it.WaveSpeed,
-                            AttenuationValue = it.AttenuationConstant*it.AttenuationFreq,
                             Impedance = it.Density*it.WaveSpeed,
                             RatioToLayer0 = it.WaveSpeed/_waveSpeed0,
                             Thickness = it.Thickness
@@ -122,7 +123,7 @@ namespace SimSonic.Core
 
         public Double GetResearchValue(Point3D point, double inpulseTime, double time)
         {
-            return _radiants.Sum(radiantProcessing(inpulseTime, time, CancellationToken.None, point));
+            return _radiants.Sum(RadiantProcessing(inpulseTime, time, CancellationToken.None, point));
         }
         public IEnumerable<double> GetResearchValues(IResearchSet researchSet, double inpulseTime, double time)
         {
@@ -133,7 +134,7 @@ namespace SimSonic.Core
                 {
                     var c = cs;
                     var enumerable = researchSet.GetPoints().Select(point =>
-                        _radiants.Sum(radiantProcessing(inpulseTime, time, c.Token, point)));
+                        _radiants.Sum(RadiantProcessing(inpulseTime, time, c.Token, point)));
                     foreach (var point in enumerable)
                         yield return point;
                 }
@@ -144,7 +145,7 @@ namespace SimSonic.Core
             }
         }
 
-        private Func<ProcessorRaidantEx, double> radiantProcessing(double inpulseTime, double time, CancellationToken cst, Point3D point)
+        private Func<ProcessorRaidantEx, double> RadiantProcessing(double inpulseTime, double time, CancellationToken cst, Point3D point)
         {
             return it =>
             {
@@ -476,19 +477,18 @@ namespace SimSonic.Core
                 {
                     return null;
                 }
+                
+                if (sign != 0 || prevDiff > 0 && diff < 0 || prevDiff < 0 && diff > 0)
+                {
+                    if (step > _epsilon)
+                        step = step * 0.5;
+                    sign = 1;
+                }
+
                 if (diff < 0)
                     alpha -= step;
                 else
                     alpha += step;
-                if (sign != 0 || prevDiff >= 0 && diff < 0 || prevDiff <= 0 && diff > 0)
-                {
-                    step = step * 0.5;
-                    sign = 1;
-                }
-                else if (sign != 0)
-                {
-                    sign = 1;
-                }
                 prevDiff = diff;
             }
         }
@@ -607,10 +607,7 @@ namespace SimSonic.Core
         /// wavespeed * density
         /// </summary>
         public double Impedance;
-        /// <summary>
-        /// attenuation const * attenuation freq
-        /// </summary>
-        public double AttenuationValue;
+
 
         public double ThicknessBefore;
         public double ThicknessAfter;
@@ -622,9 +619,10 @@ namespace SimSonic.Core
             double tmp;
             if (_cachedAttenuation.TryGetValue(freq, out tmp))
                 return tmp;
-            tmp = freq / AttenuationValue;
+            tmp = freq / AttenuationFreq;
             if (IsSquareAttenuation)
                 tmp *= tmp;
+            tmp *= AttenuationConstant;
             _cachedAttenuation[freq] = tmp;
             return tmp;
         }

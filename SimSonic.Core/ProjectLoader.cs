@@ -15,13 +15,14 @@ namespace SimSonic.Core
             return JsonConvert.DeserializeObject<ProcessorProject>(json);
         }
 
-        public ProcessorProject LoadFromCsv(String radiants, String layers, String signals, String sphere, String resultSet)
+        public ProcessorProject LoadFromCsv(String radiants, String layers, String signals, String sphere, String resultSet, String common)
         {
             
             var radiantsCsv = CsvHelper.FromCsv(radiants);
             var layersCsv = CsvHelper.FromCsv(layers);
             var signalsCsv = CsvHelper.FromCsv(signals);
             var sphereCsv = CsvHelper.FromCsv(sphere);
+            var commonCsv = CsvHelper.FromCsv(common);
 
             var project = new ProcessorProject();
 
@@ -42,6 +43,7 @@ namespace SimSonic.Core
             {
                 var item = new ProcessorLayer
                 {
+                    Name = layersCsv["Name", i],
                     AttenuationConstant = Double.Parse(layersCsv["AttenuationConstant", i], CultureInfo.InvariantCulture),
                     AttenuationFreq = Double.Parse(layersCsv["AttenuationFreq", i], CultureInfo.InvariantCulture),
                     Density = Double.Parse(layersCsv["Density", i], CultureInfo.InvariantCulture),
@@ -65,6 +67,8 @@ namespace SimSonic.Core
                 project.Radiants.Add(item);
             }
             project.ResearchSets = LoadResearchRects(resultSet).Cast<ResearchSetBase>().ToList();
+            project.Reflections = Int32.Parse(commonCsv["Reflections", 0], CultureInfo.InvariantCulture);
+
             return project;
         }
 
