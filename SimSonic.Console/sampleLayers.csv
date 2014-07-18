@@ -1,5 +1,5 @@
 ﻿Name,AttenuationConstant,AttenuationFreq,Density,IsSquareAttenuation,Thickness,WaveSpeed
-Water,0.03,1e6,1000,1,0.15,1500
+Water,0.03,1e6,1000,1,6,1488
 Skin,40,1e6,1250,0,0.002,1610
 Fat,13,1e6,930,0,0.02,1450
 Muscles,20,1e6,1060,0,0.02,1570

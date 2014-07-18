@@ -25,6 +25,7 @@ namespace SimSonic.Core
         private int _reflectionDepth = 1;
         private static readonly Vector3D ZAxis = new Vector3D(0, 0, 1);
         private static readonly Vector3D XAxis = new Vector3D(1, 0, 0);
+        private static readonly Vector3D YAxis = new Vector3D(0, 1, 0);
         private bool _isStopped = true;
 
         private CancellationTokenSource _cancellationTokenSource;
@@ -250,12 +251,16 @@ namespace SimSonic.Core
             matrix.SetIdentity();
             if (y != 0 || z != 0)
             {
-                double ra = Vector3D.AngleBetween(ZAxis, new Vector3D(0, y, z));
-                if (y < 0) ra = -ra;
+                matrix.Translate(new Vector3D(-sphereRadius, 0, 0));
+                var direction = new Point3D(sphereRadius, 0, 0) - position;
+                double ra = -Vector3D.AngleBetween(direction, XAxis);
+                //if (y < 0) ra = -ra;
                 matrix.Rotate(new Quaternion(ZAxis, ra));
-                var direction = new Point3D(sphereRadius,0,0) - position;
-                ra = Vector3D.AngleBetween(XAxis, direction);
+                ra = Vector3D.AngleBetween(YAxis, new Vector3D(0,y,z));
+                if (z < 0)
+                    ra = -ra;
                 matrix.Rotate(new Quaternion(XAxis, ra));
+                matrix.Translate(new Vector3D(sphereRadius, 0, 0));
             }
             return matrix;
         }
