@@ -517,7 +517,7 @@ namespace SimSonic.Core
 
                 var amp = amplitude;
                 var w = freq * 2.0 * Math.PI;
-                var ph = phase + w * (travelTime);
+                var ph = phase;
                 ProcessorTracePart prevPart = null;
                 foreach (var tracePart in trace.Parts)
                 {

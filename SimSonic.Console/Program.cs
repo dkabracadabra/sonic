@@ -57,9 +57,9 @@ namespace SimSonic.Console
             var timeTo = Double.Parse(timeToStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
             var timeStep = timeStepStr == null
                 ? ((timeTo - timeFrom)/10.0)
-                : Double.Parse(timeToStr.Split(new[] {'='}, 2)[1], CultureInfo.InvariantCulture);
+                : Double.Parse(timeStepStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
             //correct time in relation with timeStep
-            timeTo = Math.Round((timeTo - timeFrom) / timeStep) * timeStep + timeFrom;
+            timeTo = Math.Ceiling((timeTo - timeFrom) / timeStep) * timeStep + timeFrom;
             var impulseDuration = Double.Parse(impulseDurationStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
             var processor = new Processor();
             processor.Init(project);
