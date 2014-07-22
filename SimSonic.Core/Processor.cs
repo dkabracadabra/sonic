@@ -146,6 +146,56 @@ namespace SimSonic.Core
             }
         }
 
+        public IEnumerable<ProcessorRadiant> PreCalcRadiants(Point3D targetPoint, Double impulseTime, Double maxTime, CancellationToken cst)
+        {
+            throw new NotImplementedException();
+        }
+
+        private Func<ProcessorRaidantEx, double> FindOptimalDelay(Point3D point, double maxTime, 
+            CancellationToken cst, double stepFactor = 0.1)
+        {
+            return it =>
+            {
+                try
+                {
+
+                    var traces = it.Domains
+                        .AsParallel().WithCancellation(cst)
+                        .Select(d => BuildTraces(_layers, d, point))
+                        .ToArray();
+
+                    var ttps = traces.SelectMany(tr=>tr.Traces).Select(tr => tr.TimeToPoint).ToArray();
+
+
+                    var fromTime = ttps.Min();
+                    var toTime = ttps.Max() + maxTime;
+
+                    var targetLayer = traces[0].PointLayer;
+                    var minPeriod = targetLayer.WaveSpeed/_signals.Max(s => s.Frequency);
+                    var step = minPeriod * stepFactor;
+
+                    //todo calc
+                    throw new NotImplementedException();
+                }
+                catch (OperationCanceledException ce)
+                {
+                    Log.Warn("FindOptimalDelay cancelled", ce);
+                    throw;
+                }
+                catch (AggregateException ae)
+                {
+                    if (ae.InnerExceptions != null)
+                    {
+                        foreach (var e in ae.InnerExceptions)
+                            Log.Warn("FindOptimalDelay aggregate inner exception", e);
+                    }
+                    throw;
+                }
+            };
+
+
+        }
+
         private Func<ProcessorRaidantEx, double> RadiantProcessing(double inpulseTime, double time, CancellationToken cst, Point3D point)
         {
             return it =>
