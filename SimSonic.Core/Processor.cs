@@ -148,7 +148,7 @@ namespace SimSonic.Core
                         var a = r.Domains.AsParallel().WithCancellation(c.Token).Select(d =>
                             {
                                 _signals.ForEach(s =>
-                                    GetTraceInfo(s.Frequency, s.Phase, s.Amplitude, point,
+                                    GetTraceInfo(s.Frequency, s.Phase, s.Amplitude * r.ValuePerDomain, point,
                                         BuildTraces(_layers, d, point).Traces)
                                         .ForEach(ti => timeLine.ForEach(t =>
                                         {
@@ -197,8 +197,8 @@ namespace SimSonic.Core
             public ProcessorRadiant Radiant;
             public Double MinTime;
             public Double MaxTime;
-            public Double MinDelay;
-            public Double MaxDelay;
+            public Double MinOffset;
+            public Double MaxOffset;
             public Double MinValue;
             public Double MaxValue;
         }
@@ -236,7 +236,7 @@ namespace SimSonic.Core
                     do
                     {
                         var value = _signals.Select(
-                            s => GetValue(s.Frequency, impulseTime, s.Phase, s.Amplitude, time, 0, point, alltraces)).Sum();
+                            s => GetValue(s.Frequency, impulseTime, s.Phase, it.ValuePerDomain*s.Amplitude, time, 0, point, alltraces)).Sum();
                         if (maxValue < value)
                         {
                             maxValue = value;
@@ -250,7 +250,7 @@ namespace SimSonic.Core
 
                     } while ((time+=step)<toTime);
 
-                    return new RadiantMinMax { Radiant = it, MaxTime = maxTime, MinTime = minTime, MaxValue = maxValue, MinValue = minValue, MinDelay = minTime - fromTime, MaxDelay = maxTime - fromTime };
+                    return new RadiantMinMax { Radiant = it, MaxTime = maxTime, MinTime = minTime, MaxValue = maxValue, MinValue = minValue, MinOffset = minTime - fromTime, MaxOffset = maxTime - fromTime };
                 }
                 catch (OperationCanceledException ce)
                 {

@@ -12,7 +12,7 @@ namespace SimSonic.Core
     {
         public ProcessorProject LoadFromJson(String json)
         {
-            return JsonConvert.DeserializeObject<ProcessorProject>(json);
+            return JsonConvert.DeserializeObject<ProcessorProject>(json, new JsonSerializerSettings(){});
         }
 
         public ProcessorProject LoadFromCsv(String radiants, String layers, String signals, String sphere, String resultSet, String common)
@@ -66,7 +66,7 @@ namespace SimSonic.Core
                 };
                 project.Radiants.Add(item);
             }
-            project.ResearchSets = LoadResearchRects(resultSet).Cast<ResearchSetBase>().ToList();
+            project.ResearchSets = LoadResearchRects(resultSet).ToList();
             project.Reflections = Int32.Parse(commonCsv["Reflections", 0], CultureInfo.InvariantCulture);
 
             return project;

@@ -101,7 +101,7 @@ namespace SimSonic.Console
                             setNo++;
                             for (var time = timeFrom; time <= timeTo; time += timeStep)
                             {
-                                var name = Path.Combine(dir, String.Format("Set{0:D2}_time{1}ms.csv", setNo, time * 1e-3));
+                                var name = Path.Combine(dir, String.Format("Set{0:D2}_time{1}.csv", setNo, time));
                                 using (var fs = new StreamWriter(name, false))
                                 {
                                     var pointsSinceFlush = 0;
@@ -142,14 +142,14 @@ namespace SimSonic.Console
                                 project.Radiants.Add(
                                     new ProcessorRadiant
                                     {
-                                        Delay = it.MinDelay + minTime - it.MinTime,
+                                        Delay = minTime - it.MinTime,
                                         Position = it.Radiant.Position,
                                         Radius = it.Radiant.Radius
                                     }));
 
                         var data = new ProjectLoader().SaveToJson(project);
 
-                        using (var fs = new StreamWriter(Path.Combine(dir, String.Format("ProjectRadiants_min{0:D2}_time{1}ms.json", min, minTime)), false))
+                        using (var fs = new StreamWriter(Path.Combine(dir, String.Format("ProjectRadiants_min{0}_time{1}ms.json", min, minTime)), false))
                         {
                             fs.Write(data);
                             fs.Flush();
@@ -164,14 +164,14 @@ namespace SimSonic.Console
                                 project.Radiants.Add(
                                     new ProcessorRadiant
                                     {
-                                        Delay = it.MaxDelay + maxTime - it.MaxTime,
+                                        Delay = maxTime - it.MaxTime,
                                         Position = it.Radiant.Position,
                                         Radius = it.Radiant.Radius
                                     }));
 
                         data = new ProjectLoader().SaveToJson(project);
 
-                        using (var fs = new StreamWriter(Path.Combine(dir, String.Format("ProjectRadiants_max{0:D2}_time{1}ms.json", max, maxTime)), false))
+                        using (var fs = new StreamWriter(Path.Combine(dir, String.Format("ProjectRadiants_max{0}_time{1}ms.json", max, maxTime)), false))
                         {
                             fs.Write(data);
                             fs.Flush();
@@ -180,7 +180,7 @@ namespace SimSonic.Console
                     break;
                 case "pointvalues":
                 {
-                    var name = Path.Combine(dir, String.Format(CultureInfo.InvariantCulture, "ProjectPoint{0} {1} {2}_timeFrom{3}_timeTo{4}.csv", pt.X, pt.Y, pt.Z, timeFrom * 1e-3, timeTo * 1e-3));
+                    var name = Path.Combine(dir, String.Format(CultureInfo.InvariantCulture, "ProjectPoint{0} {1} {2}_timeFrom{3}_timeTo{4}.csv", pt.X, pt.Y, pt.Z, timeFrom, timeTo));
                     using (var fs = new StreamWriter(name, false))
                     {
                         var pointsSinceFlush = 0;
