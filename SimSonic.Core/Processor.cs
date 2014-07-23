@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -126,7 +127,7 @@ namespace SimSonic.Core
         {
             return _radiants.Sum(RadiantProcessing(inpulseTime, time, CancellationToken.None, point));
         }
-        public IEnumerable<double> GetResearchValues(IResearchSet researchSet, double inpulseTime, double time)
+        public IDictionary<double,double> GetPointValues(Point3D point, double impulseTime, double timeFrom, double timeTo, double timeStep)
         {
             using (var cs = new CancellationTokenSource())
             {
@@ -134,10 +135,32 @@ namespace SimSonic.Core
                 try
                 {
                     var c = cs;
-                    var enumerable = researchSet.GetPoints().Select(point =>
-                        _radiants.Sum(RadiantProcessing(inpulseTime, time, c.Token, point)));
-                    foreach (var point in enumerable)
-                        yield return point;
+
+                    var timeLine = new List<double>();
+
+                    for (var time = timeFrom; time < timeTo; time+=timeStep)
+                    {
+                        timeLine.Add(time);
+                    }
+                    var cd = new ConcurrentDictionary<double,double>();
+                    foreach (var r in _radiants)
+                    {
+                        var a = r.Domains.AsParallel().WithCancellation(c.Token).Select(d =>
+                            {
+                                _signals.ForEach(s =>
+                                    GetTraceInfo(s.Frequency, s.Phase, s.Amplitude, point,
+                                        BuildTraces(_layers, d, point).Traces)
+                                        .ForEach(ti => timeLine.ForEach(t =>
+                                        {
+                                            var v = GetTraceValue(t + r.Delay, impulseTime, ti);
+                                            cd.AddOrUpdate(t, v, (k, ov) => ov + v);
+                                        }))
+                                    );
+                                return 0;
+                            }).ToArray();
+
+                    }
+                    return cd;
                 }
                 finally
                 {
@@ -146,13 +169,42 @@ namespace SimSonic.Core
             }
         }
 
-        public IEnumerable<ProcessorRadiant> PreCalcRadiants(Point3D targetPoint, Double impulseTime, Double maxTime, CancellationToken cst)
+        public IEnumerable<double> GetResearchValues(IResearchSet researchSet, double inpulseTime, double time)
         {
-            throw new NotImplementedException();
+            using (var cs = new CancellationTokenSource())
+            {
+                _cancellationTokenSource = cs;
+                try
+                {
+                    var c = cs;
+                    return researchSet.GetPoints().Select(point =>
+                        _radiants.Sum(RadiantProcessing(inpulseTime, time, c.Token, point)));
+                }
+                finally
+                {
+                    _cancellationTokenSource = null;
+                }
+            }
         }
 
-        private Func<ProcessorRaidantEx, double> FindOptimalDelay(Point3D point, double maxTime, 
-            CancellationToken cst, double stepFactor = 0.1)
+        public IEnumerable<RadiantMinMax> PreCalcRadiants(Point3D targetPoint, Double impulseTime, CancellationToken cst, Double minPeriodStepFactor = 0.1)
+        {
+            return _radiants.Select(FindOptimalDelay(targetPoint, impulseTime, cst, minPeriodStepFactor));
+        }
+
+        public struct RadiantMinMax
+        {
+            public ProcessorRadiant Radiant;
+            public Double MinTime;
+            public Double MaxTime;
+            public Double MinDelay;
+            public Double MaxDelay;
+            public Double MinValue;
+            public Double MaxValue;
+        }
+
+        private Func<ProcessorRaidantEx, RadiantMinMax> FindOptimalDelay(Point3D point, Double impulseTime, 
+            CancellationToken cst, Double stepFactor = 0.1)
         {
             return it =>
             {
@@ -163,19 +215,42 @@ namespace SimSonic.Core
                         .AsParallel().WithCancellation(cst)
                         .Select(d => BuildTraces(_layers, d, point))
                         .ToArray();
-
-                    var ttps = traces.SelectMany(tr=>tr.Traces).Select(tr => tr.TimeToPoint).ToArray();
+                    var alltraces = traces.SelectMany(t => t.Traces).ToList();
+                    var ttps = alltraces.Select(tr => tr.TimeToPoint).ToArray();
 
 
                     var fromTime = ttps.Min();
-                    var toTime = ttps.Max() + maxTime;
+                    var toTime = ttps.Max() + impulseTime;
 
                     var targetLayer = traces[0].PointLayer;
                     var minPeriod = targetLayer.WaveSpeed/_signals.Max(s => s.Frequency);
                     var step = minPeriod * stepFactor;
 
-                    //todo calc
-                    throw new NotImplementedException();
+                    var time = fromTime;
+                    
+                    var maxValue = .0;
+                    var maxTime = .0;
+                    var minValue = .0;
+                    var minTime = .0;
+                    
+                    do
+                    {
+                        var value = _signals.Select(
+                            s => GetValue(s.Frequency, impulseTime, s.Phase, s.Amplitude, time, 0, point, alltraces)).Sum();
+                        if (maxValue < value)
+                        {
+                            maxValue = value;
+                            maxTime = time;
+                        }
+                        if (minValue > value)
+                        {
+                            minValue = value;
+                            minTime = time;
+                        }
+
+                    } while ((time+=step)<toTime);
+
+                    return new RadiantMinMax { Radiant = it, MaxTime = maxTime, MinTime = minTime, MaxValue = maxValue, MinValue = minValue, MinDelay = minTime - fromTime, MaxDelay = maxTime - fromTime };
                 }
                 catch (OperationCanceledException ce)
                 {
@@ -550,14 +625,93 @@ namespace SimSonic.Core
 
         #endregion
 
+
+        public class TraceInfo
+        {
+            public ProcessorTrace Trace;
+            public Double Amplitude;
+            public Double PhaseBase;
+            public Double AngularFrequency;
+        }
+
+        public static Double GetTraceValue(double time, double impulseTime, TraceInfo traceInfo)
+        {
+            var travelTime = time ;
+            if (travelTime <= 0)
+                return 0;
+
+            if (travelTime < traceInfo.Trace.TimeToPoint)
+                return 0;
+            if (travelTime > traceInfo.Trace.TimeToPoint + impulseTime)
+                return 0;
+
+            var phase = traceInfo.PhaseBase + traceInfo.AngularFrequency*travelTime;
+            return traceInfo.Amplitude * Math.Sin(phase);
+        }
+        public static List<TraceInfo> GetTraceInfo(double freq, double phase, double amplitude,  Point3D targetPoint, List<ProcessorTrace> traces)
+        {
+            var w = freq * 2.0 * Math.PI;
+            var result = new List<TraceInfo>();
+            foreach (var trace in traces)
+            {
+                if (trace.Parts.Count == 0)
+                    continue;
+                var amp = amplitude;
+                var ph = phase;
+
+                ProcessorTracePart prevPart = null;
+                foreach (var tracePart in trace.Parts)
+                {
+                    if (prevPart != null)
+                    {
+                        if (tracePart.ReflectionLayer == null)
+                        {
+                            // z1 = p1c1/cos(b)
+                            // z0 = p0c0/cos(a)
+                            //w = 2z1/(z1+z0)
+                            var z1 = tracePart.Layer.Impedance / Math.Cos(tracePart.Angle);
+                            var z0 = prevPart.Layer.Impedance / Math.Cos(prevPart.Angle);
+                            amp *= z1 * 2 / (z1 + z0);
+                        }
+                        else
+                        {
+                            var l0 = tracePart.Layer;
+                            var l1 = tracePart.ReflectionLayer;
+                            var a = tracePart.Angle;
+                            //z0 = p0c0/cos(a)
+                            //z1 = p1c1/cos(b)
+                            //v = (z1-z0)/(z1+z0)
+                            //b = asin(sina * c2/c1)
+                            var z0 = l0.Impedance / Math.Cos(a);
+                            var z1 = l1.Impedance / Math.Cos(Math.Asin(Math.Sin(a) * l0.WaveSpeed / l1.WaveSpeed));
+                            amp *= (z1 - z0) / (z1 + z0);
+                            // phase shift
+                            if (l1.Impedance < l0.Impedance)
+                                ph += Math.PI;
+                        }
+                    }
+
+                    amp *= Math.Exp(-tracePart.Length * tracePart.Layer.GetAttenuationFactor(freq));
+                    ph += w * tracePart.Length / tracePart.Layer.WaveSpeed;
+                    prevPart = tracePart;
+                }
+                // ok 
+                result.Add(new TraceInfo { Trace = trace, AngularFrequency = w, Amplitude = amp, PhaseBase = ph });
+            }
+            return result;
+        }
+
+
         public static double GetValue(double freq, double impulseTime, double phase, double amplitude, double time, double delay, Point3D targetPoint, List<ProcessorTrace> traces)
         {
             var sum = 0d;
+            var travelTime = time - delay;
+            if (travelTime <= 0)
+                return sum;
+            var w = freq * 2.0 * Math.PI;
+
             foreach (var trace in traces)
             {
-                var travelTime = time - delay;
-                if (travelTime<=0)
-                    continue;
                 if (trace.Parts.Count == 0)
                     continue;
                 if (travelTime < trace.TimeToPoint)
@@ -566,8 +720,8 @@ namespace SimSonic.Core
                     continue;
 
                 var amp = amplitude;
-                var w = freq * 2.0 * Math.PI;
-                var ph = phase + w * (travelTime);
+                var ph = phase + w * travelTime;
+
                 ProcessorTracePart prevPart = null;
                 foreach (var tracePart in trace.Parts)
                 {
