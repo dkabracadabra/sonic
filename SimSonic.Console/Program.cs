@@ -70,7 +70,7 @@ namespace SimSonic.Console
                     Point3D pt;
                     if (pointStr != null)
                     {
-                        var parts = pointStr.Split(',');
+                        var parts = pointStr.Split(new[] { '=' }, 2)[1].Split(',');
                         pt = new Point3D(
                             Double.Parse(parts[0], CultureInfo.InvariantCulture),
                             Double.Parse(parts[1], CultureInfo.InvariantCulture),
