@@ -21,6 +21,7 @@ namespace SimSonic.Core
         public Double SphereCutRadius { get; set; }
         public Double SphereRadius { get; set; }
         public Int32 Reflections { get; set; }
+        public Double RadinatDomainMinPeriodFactor { get; set; }
     }
 
 

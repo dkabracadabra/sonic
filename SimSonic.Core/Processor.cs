@@ -22,6 +22,7 @@ namespace SimSonic.Core
 
         private double _sphereRadius;
         private double _waveSpeed0;
+        private double _domainFactor;
         private double _epsilon = 1e-6;
         private int _reflectionDepth = 1;
         private static readonly Vector3D ZAxis = new Vector3D(0, 0, 1);
@@ -91,15 +92,17 @@ namespace SimSonic.Core
                                                              Direction = new Point3D(_sphereRadius,0,0) - it.Position 
                                                          }));
 
-            //var highestFreq = info.Signals.Select(it=>it.Frequency).OrderByDescending(it => it).First();
+            var highestFreq = info.Signals.Select(it=>it.Frequency).OrderByDescending(it => it).First();
             
             
-            var highestFreq = 2e6;
+            
             var shortestWave = _waveSpeed0/highestFreq;
-
+            _domainFactor = info.RadinatDomainMinPeriodFactor;
+            if (_domainFactor == 0)
+                _domainFactor = .25;
             var radiusDict = _radiants.Select(it => it.Radius).Distinct().ToDictionary(it => it,
                                                                                        it =>
-                                                                                       GetDomains(it, shortestWave*.25));
+                                                                                       GetDomains(it, shortestWave * _domainFactor));
             foreach (var processorRadiant in _radiants)
             {
                 processorRadiant.Domains =

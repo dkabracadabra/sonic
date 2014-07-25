@@ -68,6 +68,7 @@ namespace SimSonic.Core
             }
             project.ResearchSets = LoadResearchRects(resultSet).ToList();
             project.Reflections = Int32.Parse(commonCsv["Reflections", 0], CultureInfo.InvariantCulture);
+            project.RadinatDomainMinPeriodFactor = Int32.Parse(commonCsv["DomainFactor", 0], CultureInfo.InvariantCulture);
 
             return project;
         }
