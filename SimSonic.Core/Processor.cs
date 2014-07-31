@@ -155,7 +155,7 @@ namespace SimSonic.Core
                                         BuildTraces(_layers, d, point).Traces)
                                         .ForEach(ti => timeLine.ForEach(t =>
                                         {
-                                            var v = GetTraceValue(t + r.Delay, impulseTime, ti);
+                                            var v = GetTraceValue(t - r.Delay, impulseTime, ti);
                                             cd.AddOrUpdate(t, v, (k, ov) => ov + v);
                                         }))
                                     );
@@ -190,7 +190,7 @@ namespace SimSonic.Core
             }
         }
 
-        public IEnumerable<RadiantMinMax> PreCalcRadiants(Point3D targetPoint, Double impulseTime, CancellationToken cst, Double minPeriodStepFactor = 0.1)
+        public IEnumerable<RadiantMinMax> PreCalcRadiants(Point3D targetPoint, Double impulseTime, CancellationToken cst, Double minPeriodStepFactor = 0.01)
         {
             return _radiants.Select(FindOptimalDelay(targetPoint, impulseTime, cst, minPeriodStepFactor));
         }
@@ -200,14 +200,12 @@ namespace SimSonic.Core
             public ProcessorRadiant Radiant;
             public Double MinTime;
             public Double MaxTime;
-            public Double MinOffset;
-            public Double MaxOffset;
             public Double MinValue;
             public Double MaxValue;
         }
 
         private Func<ProcessorRaidantEx, RadiantMinMax> FindOptimalDelay(Point3D point, Double impulseTime, 
-            CancellationToken cst, Double stepFactor = 0.1)
+            CancellationToken cst, Double stepFactor = 0.01)
         {
             return it =>
             {
@@ -227,7 +225,8 @@ namespace SimSonic.Core
 
                     var targetLayer = traces[0].PointLayer;
                     var minPeriod = targetLayer.WaveSpeed/_signals.Max(s => s.Frequency);
-                    var step = minPeriod * stepFactor;
+                    var step = Math.Min(minPeriod, impulseTime) * stepFactor;
+                    
 
                     var time = fromTime;
                     
@@ -253,7 +252,7 @@ namespace SimSonic.Core
 
                     } while ((time+=step)<toTime);
 
-                    return new RadiantMinMax { Radiant = it, MaxTime = maxTime, MinTime = minTime, MaxValue = maxValue, MinValue = minValue, MinOffset = minTime - fromTime, MaxOffset = maxTime - fromTime };
+                    return new RadiantMinMax { Radiant = it, MaxTime = maxTime, MinTime = minTime, MaxValue = maxValue, MinValue = minValue };
                 }
                 catch (OperationCanceledException ce)
                 {
@@ -588,7 +587,17 @@ namespace SimSonic.Core
             if (alpha == 0)
                 return 0;
             var sinA = Math.Sin(alpha);
-            return (from args in vars let x = args.C * sinA select args.H * (x / Math.Sqrt(1 - x * x))).Sum();
+            var sum = 0d;
+            foreach (var arg in vars)
+            {
+                var sinB = arg.C*sinA;
+                if (sinB > 1 || sinB < -1)
+                {
+                    return double.NaN;
+                }
+                sum += arg.H*(sinB/Math.Sqrt(1 - sinB*sinB));
+            }
+            return sum;
         }
 
         private double? Solve(List<ProcessorSolverVars> vars, double alpha, double height)
@@ -600,12 +609,48 @@ namespace SimSonic.Core
             var iterations = 0;
             var step = alpha * 0.05;  //5 percent
             var sign = 0;
+            
+            var maxC = vars.Max(it => it.C);
+            double maxAlpha;
+
+            if (maxC > 1)
+            {
+                maxAlpha = Math.Asin(1 / maxC) - double.Epsilon;
+                var h = GetHeight(vars, maxAlpha);
+                if (double.IsNaN(h))
+                {
+                    return null;
+                }
+                if (height - h > 0)
+                {
+                    return null;
+                }
+            }
+            else
+            {
+                maxAlpha = Math.PI*.5 - double.Epsilon;
+            }
+
             while (true)
             {
+                if (alpha > maxAlpha)
+                    alpha = maxAlpha;
                 var h = GetHeight(vars, alpha);
+
                 var diff = height - h;
+                if (double.IsNaN(diff))
+                {
+                    
+                }
                 if (Math.Abs(diff) <= _epsilon)
+                {
+                    if (alpha > Math.PI*0.5d)
+                    {
+                            
+                    }
                     return alpha;
+                }    
+                
                 if (++iterations > 1000)
                 {
                     return null;

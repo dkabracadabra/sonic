@@ -130,7 +130,7 @@ namespace SimSonic.Console
                     break;
                 case "delays":
                     {
-                        var radiants = processor.PreCalcRadiants(pt, impulseDuration, CancellationToken.None).ToList();
+                        var radiants = processor.PreCalcRadiants(pt, impulseDuration, CancellationToken.None, 0.01).ToList();
 
 
                         var minTime = radiants.Max(r => r.MinTime);
@@ -149,7 +149,7 @@ namespace SimSonic.Console
 
                         var data = new ProjectLoader().SaveToJson(project);
 
-                        using (var fs = new StreamWriter(Path.Combine(dir, String.Format("ProjectRadiants_min{0}_time{1}ms.json", min, minTime)), false))
+                        using (var fs = new StreamWriter(Path.Combine(dir, String.Format("ProjectRadiants_min{0}_time{1}.json", min, minTime)), false))
                         {
                             fs.Write(data);
                             fs.Flush();
@@ -171,7 +171,7 @@ namespace SimSonic.Console
 
                         data = new ProjectLoader().SaveToJson(project);
 
-                        using (var fs = new StreamWriter(Path.Combine(dir, String.Format("ProjectRadiants_max{0}_time{1}ms.json", max, maxTime)), false))
+                        using (var fs = new StreamWriter(Path.Combine(dir, String.Format("ProjectRadiants_max{0}_time{1}.json", max, maxTime)), false))
                         {
                             fs.Write(data);
                             fs.Flush();
