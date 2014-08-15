@@ -172,6 +172,84 @@ namespace SimSonic.Core
             }
         }
 
+
+
+        public class PointInTimeByRadiantInfo
+        {
+            public Point3D Point;
+            public double Time;
+            public double Value;
+            public IDictionary<ProcessorRadiant, double> Values = new Dictionary<ProcessorRadiant, double>();
+        }
+
+
+        public Tuple<PointInTimeByRadiantInfo, PointInTimeByRadiantInfo> GetCurves(Point3D point, double impulseTime, double timeFrom, double timeTo, double timeStep)
+        {
+            var result =
+                new Tuple<PointInTimeByRadiantInfo, PointInTimeByRadiantInfo>(
+                    new PointInTimeByRadiantInfo {Point = point}, new PointInTimeByRadiantInfo {Point = point});
+            
+            using (var cs = new CancellationTokenSource())
+            {
+                _cancellationTokenSource = cs;
+                try
+                {
+                    var c = cs;
+
+                    var timeLine = new List<double>();
+
+                    for (var time = timeFrom; time < timeTo; time += timeStep)
+                    {
+                        timeLine.Add(time);
+                    }
+                    var cd = new ConcurrentDictionary<double, double>();
+                    var acc = new Dictionary<ProcessorRadiant, IDictionary<double, double>>();
+                    var pointTimelineValues = timeLine.ToDictionary(it=>it, it=>0d);
+                    
+                    foreach (var r in _radiants)
+                    {
+                        var a = r.Domains.AsParallel().WithCancellation(c.Token).Select(d =>
+                        {
+                            _signals.ForEach(s =>
+                                GetTraceInfo(s.Frequency, s.Phase, s.Amplitude * r.ValuePerDomain, point,
+                                    BuildTraces(_layers, d, point).Traces)
+                                    .ForEach(ti => timeLine.ForEach(t =>
+                                    {
+                                        var v = GetTraceValue(t - r.Delay, impulseTime, ti);
+                                        cd.AddOrUpdate(t, v, (k, ov) => ov + v);
+                                    }))
+                                );
+                            return 0;
+                        }).ToArray();
+                        acc.Add(r, cd);
+                        foreach (var keyValuePair in cd)
+                        {
+                            pointTimelineValues[keyValuePair.Key] += keyValuePair.Value;
+                        }
+                        cd = new ConcurrentDictionary<double, double>();
+                    }
+
+                    var max = pointTimelineValues.Max(it => it.Value);
+                    var min = pointTimelineValues.Min(it => it.Value);
+                    var timeMax = pointTimelineValues.FirstOrDefault(it => it.Value == max).Key;
+                    var timeMin = pointTimelineValues.FirstOrDefault(it => it.Value == min).Key;
+
+                    result.Item1.Time = timeMax;
+                    result.Item2.Time = timeMin;
+                    result.Item1.Value = max;
+                    result.Item2.Value = min;
+                    result.Item1.Values = acc.ToDictionary(it => it.Key, it => it.Value[timeMax]);
+                    result.Item2.Values = acc.ToDictionary(it => it.Key, it => it.Value[timeMin]);
+
+                    return result;
+                }
+                finally
+                {
+                    _cancellationTokenSource = null;
+                }
+            }
+        }
+
         public IEnumerable<double> GetResearchValues(IResearchSet researchSet, double inpulseTime, double time)
         {
             using (var cs = new CancellationTokenSource())
@@ -189,7 +267,28 @@ namespace SimSonic.Core
                 }
             }
         }
+        public IEnumerable<Tuple<Point3D, double, IDictionary<ProcessorRadiant, double>>> GetResearchValueByRadinats(IResearchSet researchSet, double inpulseTime, double time)
+        {
+            using (var cs = new CancellationTokenSource())
+            {
+                _cancellationTokenSource = cs;
+                try
+                {
+                    var c = cs;
+                    return researchSet.GetPoints().Select(point =>
 
+                    {
+                        var dict = _radiants.ToDictionary(it => (ProcessorRadiant)it, RadiantProcessing(inpulseTime, time, c.Token, point));
+                        return new Tuple<Point3D, double, IDictionary<ProcessorRadiant, double>>(point, dict.Values.Sum(), dict);
+                    }
+                        );
+                }
+                finally
+                {
+                    _cancellationTokenSource = null;
+                }
+            }
+        }
         public IEnumerable<RadiantMinMax> PreCalcRadiants(Point3D targetPoint, Double impulseTime, CancellationToken cst, Double minPeriodStepFactor = 0.01)
         {
             return _radiants.Select(FindOptimalDelay(targetPoint, impulseTime, cst, minPeriodStepFactor));

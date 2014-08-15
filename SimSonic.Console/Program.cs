@@ -197,6 +197,86 @@ namespace SimSonic.Console
                     }
                 }
                     break;
+                case "byradiants":
+                    {
+                        var setNo = 0;
+                        foreach (var researchSetBase in project.ResearchSets)
+                        {
+                            setNo++;
+                            for (var time = timeFrom; time <= timeTo; time += timeStep)
+                            {
+                                var name = Path.Combine(dir, String.Format("ByRadinats_Set{0:D2}_time{1}.csv", setNo, time));
+                                using (var fs = new StreamWriter(name, false))
+                                {
+                                    var pointsSinceFlush = 0;
+                                    var vals = processor.GetResearchValueByRadinats(researchSetBase, impulseDuration, time);
+
+                                    foreach (var tuple in vals)
+                                    {
+
+                                        fs.Write("{0},{1},{2},{3},", tuple.Item1.X, tuple.Item1.Y, tuple.Item1.Z, tuple.Item2);
+                                        fs.WriteLine(String.Join(",",tuple.Item3.Select(it=>it.Value).ToString()));
+                                        if (++pointsSinceFlush > flushPoints)
+                                        {
+                                            pointsSinceFlush = 0;
+                                            fs.Flush();
+                                        }
+                                    }
+                                    fs.Flush();
+                                }
+                            }
+                        }
+                        var data = new ProjectLoader().SaveToJson(project);
+
+                        using (var fs = new StreamWriter(Path.Combine(dir, "Project.json"), false))
+                        {
+                            fs.Write(data);
+                            fs.Flush();
+                        }
+                    }
+                    break;
+                case "curves":
+                    {
+                        var setNo = 0;
+                        foreach (var researchSetBase in project.ResearchSets)
+                        {
+
+                            var name = Path.Combine(dir,
+                                String.Format("CurvesByRadinats_timeFrom{0}_timeTo{1}_timeStep{2}.csv", timeFrom, timeTo,
+                                    timeStep));
+                            using (var fs = new StreamWriter(name, false))
+                            {
+                                var pointsSinceFlush = 0;
+                                foreach (var point in researchSetBase.GetPoints())
+                                {
+                                    
+                                var vals = processor.GetCurves(point, impulseDuration, timeFrom, timeTo, timeStep);
+
+                                fs.Write("{0},{1},{2},,{3},{4},", point.X, point.Y, point.Z, vals.Item1.Time, vals.Item1.Value);
+                                fs.Write(String.Join(",", vals.Item1.Values.Select(it => it.Value).ToString()));
+                                fs.Write(",,{0},{1},", vals.Item2.Time, vals.Item2.Value);
+                                fs.WriteLine(String.Join(",", vals.Item2.Values.Select(it => it.Value).ToString()));
+
+                                if (++pointsSinceFlush > flushPoints)
+                                {
+                                    pointsSinceFlush = 0;
+                                    fs.Flush();
+                                }
+                                
+                                fs.Flush();
+                                }
+
+                            }
+                        }
+                        var data = new ProjectLoader().SaveToJson(project);
+
+                        using (var fs = new StreamWriter(Path.Combine(dir, "Project.json"), false))
+                        {
+                            fs.Write(data);
+                            fs.Flush();
+                        }
+                    }
+                    break;
             }
             
 
