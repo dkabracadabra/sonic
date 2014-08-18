@@ -280,6 +280,36 @@ namespace SimSonic.Console
                         }
                     }
                     break;
+                case "sphere":
+                    {
+
+                        var radiantCountStr = args.FirstOrDefault(it => it.StartsWith("--radiantCount=", StringComparison.OrdinalIgnoreCase));
+                        var radiantRadiusStr = args.FirstOrDefault(it => it.StartsWith("--radiantRadius=", StringComparison.OrdinalIgnoreCase));
+                        var radiantDistanceStr = args.FirstOrDefault(it => it.StartsWith("--radiantDistance=", StringComparison.OrdinalIgnoreCase));
+                        if (!String.IsNullOrEmpty(radiantCountStr))
+                        {
+                            var radiantCount = Int32.Parse(radiantCountStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
+                            var radiantRadius = Double.Parse(radiantRadiusStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
+                            var radiantDistance = Double.Parse(radiantDistanceStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
+
+                            var list = SphereGenerator.GenerateRandomRadiantPositions(project.SphereRadius, project.SphereCutRadius,
+                                radiantCount, radiantDistance, project.Radiants.Select(it => new Vector3D(it.Position.X, it.Position.Y, it.Position.Z)).ToList());
+
+                            project.Radiants.Clear();
+                            project.Radiants =
+                                list.Select(it => new ProcessorRadiant {Position = it, Radius = radiantRadius}).ToList();
+                            var data = new ProjectLoader().SaveToJson(project);
+                            using (var fs = new StreamWriter(Path.Combine(dir, "Project.json"), false))
+                            {
+                                fs.Write(data);
+                                fs.Flush();
+                            }
+
+
+                        }
+                        
+                    }
+                    break;
             }
             
 
