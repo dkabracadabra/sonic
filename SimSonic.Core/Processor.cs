@@ -177,17 +177,18 @@ namespace SimSonic.Core
         public class PointInTimeByRadiantInfo
         {
             public Point3D Point;
-            public double Time;
-            public double Value;
-            public IDictionary<ProcessorRadiant, double> Values = new Dictionary<ProcessorRadiant, double>();
+            public double MinTime;
+            public double MaxTime;
+            public double MinValue;
+            public double MaxValue;
+            public IList<RadiantMinMax> RadiantCurves = new List<RadiantMinMax>();
         }
 
 
-        public Tuple<PointInTimeByRadiantInfo, PointInTimeByRadiantInfo> GetCurves(Point3D point, double impulseTime, double timeFrom, double timeTo, double timeStep)
+
+        public  PointInTimeByRadiantInfo GetCurves(Point3D point, double impulseTime, double timeFrom, double timeTo, double timeStep)
         {
-            var result =
-                new Tuple<PointInTimeByRadiantInfo, PointInTimeByRadiantInfo>(
-                    new PointInTimeByRadiantInfo {Point = point}, new PointInTimeByRadiantInfo {Point = point});
+            var result = new PointInTimeByRadiantInfo {Point = point};
             
             using (var cs = new CancellationTokenSource())
             {
@@ -234,12 +235,20 @@ namespace SimSonic.Core
                     var timeMax = pointTimelineValues.FirstOrDefault(it => it.Value == max).Key;
                     var timeMin = pointTimelineValues.FirstOrDefault(it => it.Value == min).Key;
 
-                    result.Item1.Time = timeMax;
-                    result.Item2.Time = timeMin;
-                    result.Item1.Value = max;
-                    result.Item2.Value = min;
-                    result.Item1.Values = acc.ToDictionary(it => it.Key, it => it.Value[timeMax]);
-                    result.Item2.Values = acc.ToDictionary(it => it.Key, it => it.Value[timeMin]);
+                    result.MaxTime = timeMax;
+                    result.MinTime = timeMin;
+                    result.MaxValue = max;
+                    result.MinValue = min;
+                    result.RadiantCurves = acc.Select(it =>
+                    {
+                        var r = new RadiantMinMax {Radiant = it.Key,};
+                        r.MaxValue = it.Value.Values.Max();
+                        r.MaxTime = it.Value.First(v => v.Value == r.MaxValue).Key;
+                        r.MinValue = it.Value.Values.Min();
+                        r.MinTime = it.Value.First(v => v.Value == r.MinValue).Key;
+                        return r;
+                    }).ToList();
+                    
 
                     return result;
                 }

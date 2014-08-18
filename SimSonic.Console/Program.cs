@@ -252,17 +252,20 @@ namespace SimSonic.Console
                                     
                                 var vals = processor.GetCurves(point, impulseDuration, timeFrom, timeTo, timeStep);
 
-                                fs.Write("{0},{1},{2},,{3},{4},", point.X, point.Y, point.Z, vals.Item1.Time, vals.Item1.Value);
-                                fs.Write(String.Join(",", vals.Item1.Values.Select(it => it.Value).ToString()));
-                                fs.Write(",,{0},{1},", vals.Item2.Time, vals.Item2.Value);
-                                fs.WriteLine(String.Join(",", vals.Item2.Values.Select(it => it.Value).ToString()));
-
+                                    fs.Write("{0},{1},{2},,{3},{4},,{5},{6},,,", point.X, point.Y, point.Z, vals.MaxTime,
+                                        vals.MaxValue, vals.MinTime, vals.MinValue);
+                                    fs.WriteLine(String.Join(",,",
+                                        vals.RadiantCurves.Select(
+                                            it =>
+                                                String.Format("{0},{1},{2},{3},{4},{5},{6}", it.Radiant.Position.X,
+                                                    it.Radiant.Position.Y, it.Radiant.Position.Z, it.MaxTime,
+                                                    it.MaxValue, it.MinTime, it.MinValue))));
+                                    
                                 if (++pointsSinceFlush > flushPoints)
                                 {
                                     pointsSinceFlush = 0;
                                     fs.Flush();
                                 }
-                                
                                 fs.Flush();
                                 }
 
