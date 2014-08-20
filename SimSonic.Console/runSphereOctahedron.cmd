@@ -1,0 +1,1 @@
+SimSonic.Console.exe --mode=csv --fileCommon=sampleCommon.csv --fileRadiants=sampleRadiants.csv --fileLayers=sampleLayers.csv --fileSignals=sampleSignals.csv --fileSphere=sampleSphere.csv --fileResearchSets=sampleResearchSet.csv  --cmd=sphereOctahedron --radiantRadius=5e-3 --radiantDistance=15e-3 --divideDepth=4

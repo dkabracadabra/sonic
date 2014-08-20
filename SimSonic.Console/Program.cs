@@ -310,6 +310,36 @@ namespace SimSonic.Console
                         
                     }
                     break;
+                case "sphereOctahedron":
+                    {
+
+                        var depthStr = args.FirstOrDefault(it => it.StartsWith("--divideDepth=", StringComparison.OrdinalIgnoreCase));
+                        var radiantRadiusStr = args.FirstOrDefault(it => it.StartsWith("--radiantRadius=", StringComparison.OrdinalIgnoreCase));
+                        var radiantDistanceStr = args.FirstOrDefault(it => it.StartsWith("--radiantDistance=", StringComparison.OrdinalIgnoreCase));
+                        if (!String.IsNullOrEmpty(depthStr))
+                        {
+                            var depth = Int32.Parse(depthStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
+                            var radiantRadius = Double.Parse(radiantRadiusStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
+                            var radiantDistance = Double.Parse(radiantDistanceStr.Split(new[] { '=' }, 2)[1], CultureInfo.InvariantCulture);
+
+                            var list = SphereGenerator.MakeOctahedronNet(project.SphereRadius, project.SphereCutRadius,
+                                depth, radiantDistance);
+
+                            project.Radiants.Clear();
+                            project.Radiants =
+                                list.Select(it => new ProcessorRadiant { Position = new Point3D(it.X, it.Y, it.Z), Radius = radiantRadius }).ToList();
+                            var data = new ProjectLoader().SaveToJson(project);
+                            using (var fs = new StreamWriter(Path.Combine(dir, "Project.json"), false))
+                            {
+                                fs.Write(data);
+                                fs.Flush();
+                            }
+
+
+                        }
+
+                    }
+                    break;
             }
             
 
