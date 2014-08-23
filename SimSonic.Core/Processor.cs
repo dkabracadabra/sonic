@@ -766,8 +766,7 @@ namespace SimSonic.Core
                 
                 if (sign != 0 || prevDiff > 0 && diff < 0 || prevDiff < 0 && diff > 0)
                 {
-                    if (step > _epsilon)
-                        step = step * 0.5;
+                    step = step * 0.5;
                     sign = 1;
                 }
 
