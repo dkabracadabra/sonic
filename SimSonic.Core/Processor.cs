@@ -846,7 +846,7 @@ namespace SimSonic.Core
                         }
                     }
 
-                    amp *= Math.Exp(-tracePart.Length * tracePart.Layer.GetAttenuationFactor(freq));
+                    amp *= Math.Exp(-tracePart.Length * tracePart.Layer.GetAttenuationFactor(freq))/tracePart.Length;
                     ph += w * tracePart.Length / tracePart.Layer.WaveSpeed;
                     prevPart = tracePart;
                 }
@@ -909,7 +909,7 @@ namespace SimSonic.Core
                         }
                     }
 
-                    amp *= Math.Exp(-tracePart.Length * tracePart.Layer.GetAttenuationFactor(freq));
+                    amp *= Math.Exp(-tracePart.Length * tracePart.Layer.GetAttenuationFactor(freq)) / tracePart.Length;
                     ph += w * tracePart.Length / tracePart.Layer.WaveSpeed;
                     prevPart = tracePart;
                 }
