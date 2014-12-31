@@ -437,15 +437,23 @@ namespace SimSonic.Core
             result.Add(new Point3D());
             AddDomainPoints(offset, radius, step, result);
             result = result.Distinct().ToList();
-            while ((offset+=step)<radius)
+            var r2 = radius*radius;
+            while (true)
             {
+                offset += step;
+                var l = r2 - offset*offset;
+                if (l<=0)
+                    break;
+                var limit = Math.Sqrt(l);
+                if (offset > limit)
+                    break;
                 //diagonal points
                 result.Add(new Point3D(0, offset, offset));
                 result.Add(new Point3D(0, -offset, offset));
                 result.Add(new Point3D(0, offset, -offset));
                 result.Add(new Point3D(0, -offset, -offset));
                 //other ortho points
-                AddDomainPoints(offset, radius, step, result);
+                AddDomainPoints(offset, limit, step, result);
             }
             return result;
         }
@@ -453,13 +461,13 @@ namespace SimSonic.Core
         /// append domain points 
         /// </summary>
         /// <param name="offset"></param>
-        /// <param name="radius"></param>
+        /// <param name="limit"></param>
         /// <param name="step"></param>
         /// <param name="points"></param>
-        private void AddDomainPoints(double offset, double radius, double step, List<Point3D> points)
+        private void AddDomainPoints(double offset, double limit, double step, List<Point3D> points)
         {
             var currentOffsett = offset;
-            while ((currentOffsett+=step) < radius)
+            while ((currentOffsett += step) < limit)
             {
                 points.Add(new Point3D(0, -offset, currentOffsett));
                 points.Add(new Point3D(0, -offset, -currentOffsett));
@@ -813,7 +821,7 @@ namespace SimSonic.Core
                     continue;
                 var amp = amplitude;
                 var ph = phase;
-
+                var traceLength = 0.0;
                 ProcessorTracePart prevPart = null;
                 foreach (var tracePart in trace.Parts)
                 {
@@ -845,13 +853,13 @@ namespace SimSonic.Core
                                 ph += Math.PI;
                         }
                     }
-
-                    amp *= Math.Exp(-tracePart.Length * tracePart.Layer.GetAttenuationFactor(freq))/tracePart.Length;
+                    traceLength += tracePart.Length;
+                    amp *= Math.Exp(-tracePart.Length * tracePart.Layer.GetAttenuationFactor(freq));
                     ph += w * tracePart.Length / tracePart.Layer.WaveSpeed;
                     prevPart = tracePart;
                 }
                 // ok 
-                result.Add(new TraceInfo { Trace = trace, AngularFrequency = w, Amplitude = amp, PhaseBase = ph });
+                result.Add(new TraceInfo { Trace = trace, AngularFrequency = w, Amplitude = amp/traceLength, PhaseBase = ph });
             }
             return result;
         }
@@ -876,6 +884,7 @@ namespace SimSonic.Core
 
                 var amp = amplitude;
                 var ph = phase + w * travelTime;
+                var traceLength = 0.0;
 
                 ProcessorTracePart prevPart = null;
                 foreach (var tracePart in trace.Parts)
@@ -908,13 +917,13 @@ namespace SimSonic.Core
                                 ph += Math.PI;
                         }
                     }
-
-                    amp *= Math.Exp(-tracePart.Length * tracePart.Layer.GetAttenuationFactor(freq)) / tracePart.Length;
+                    traceLength += tracePart.Length;
+                    amp *= Math.Exp(-tracePart.Length * tracePart.Layer.GetAttenuationFactor(freq));
                     ph += w * tracePart.Length / tracePart.Layer.WaveSpeed;
                     prevPart = tracePart;
                 }
                 // ok 
-                sum += amp * Math.Sin(ph);
+                sum += amp / traceLength * Math.Sin(ph);
             }
             return sum;
         }
