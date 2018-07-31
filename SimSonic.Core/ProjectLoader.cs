@@ -12,7 +12,10 @@ namespace SimSonic.Core
     {
         public ProcessorProject LoadFromJson(String json)
         {
-            return JsonConvert.DeserializeObject<ProcessorProject>(json, new JsonSerializerSettings(){});
+            var settings = new JsonSerializerSettings() { };
+            settings.Converters.Add(new ResearchSetConverter());
+               
+            return JsonConvert.DeserializeObject<ProcessorProject>(json, settings);
         }
 
         public ProcessorProject LoadFromCsv(String radiants, String layers, String signals, String sphere, String resultSet, String common)
@@ -79,12 +82,27 @@ namespace SimSonic.Core
         }
 
 
-        public List<ResearchRect> LoadResearchRects(String csv)
+        public List<IResearchSet> LoadResearchRects(String csv)
         {
             var csvModel = CsvHelper.FromCsv(csv);
-            var result = new List<ResearchRect>();
+            var result = new List<IResearchSet>();
             for (int i = 0; i < csvModel.Count; i++)
             {
+                var radiusStr = csvModel["Radius", i];
+                if (!String.IsNullOrWhiteSpace(radiusStr))
+                {
+
+                    result.Add(
+                        new CentralRadialResearchSet()
+                        {
+                            AngleDegrees = Double.Parse(csvModel["AngleDegrees", i], CultureInfo.InvariantCulture),
+                            Radius = Double.Parse(radiusStr, CultureInfo.InvariantCulture),
+                            StepDegrees = Double.Parse(csvModel["StepDegrees", i], CultureInfo.InvariantCulture),
+                        }
+                        );
+
+                    continue;
+                }
 
                 var item = new ResearchRect(new Rect3D(Double.Parse(csvModel["Rect.X", i], CultureInfo.InvariantCulture),
                     Double.Parse(csvModel["Rect.Y", i], CultureInfo.InvariantCulture),

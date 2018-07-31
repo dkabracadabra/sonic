@@ -11,13 +11,13 @@ namespace SimSonic.Core
             Signals = new List<ProcessorSignal>();
             Layers = new List<ProcessorLayer>();
             Radiants = new List<ProcessorRadiant>();
-            ResearchSets = new List<ResearchRect>();
+            ResearchSets = new List<IResearchSet>();
         }
 
         public ICollection<ProcessorSignal> Signals { get; set; } 
         public ICollection<ProcessorLayer> Layers { get; set; } 
         public ICollection<ProcessorRadiant> Radiants { get; set; }
-        public ICollection<ResearchRect> ResearchSets { get; set; }
+        public ICollection<IResearchSet> ResearchSets { get; set; }
         public Double SphereCutRadius { get; set; }
         public Double SphereRadius { get; set; }
         public Int32 Reflections { get; set; }

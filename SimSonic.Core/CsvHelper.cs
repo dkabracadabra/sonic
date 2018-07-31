@@ -65,7 +65,12 @@ namespace Company.Common
         }
 
         public String this[String column, int lineIndex] {
-            get { return _data[lineIndex][_headers[column]]; }
+            get
+            {
+                if (!_headers.ContainsKey(column))
+                    return null;
+                return _data[lineIndex][_headers[column]];
+            }
             set { _data[lineIndex][_headers[column]] = value; }
         }
 
