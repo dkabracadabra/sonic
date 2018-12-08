@@ -130,7 +130,7 @@ namespace SimSonic.Console
                     break;
                 case "delays":
                     {
-                        var radiants = processor.PreCalcRadiants(pt, impulseDuration, CancellationToken.None, 0.01).ToList();
+                        var radiants = processor.PreCalcRadiants(pt, impulseDuration, CancellationToken.None, timeStep).ToList();
 
 
                         var minTime = radiants.Max(r => r.MinTime);

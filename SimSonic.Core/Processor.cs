@@ -298,9 +298,9 @@ namespace SimSonic.Core
                 }
             }
         }
-        public IEnumerable<RadiantMinMax> PreCalcRadiants(Point3D targetPoint, Double impulseTime, CancellationToken cst, Double minPeriodStepFactor = 0.01)
+        public IEnumerable<RadiantMinMax> PreCalcRadiants(Point3D targetPoint, Double impulseTime, CancellationToken cst, Double timeStep = 1e-9)
         {
-            return _radiants.Select(FindOptimalDelay(targetPoint, impulseTime, cst, minPeriodStepFactor));
+            return _radiants.Select(FindOptimalDelay(targetPoint, impulseTime, cst, timeStep));
         }
 
         public struct RadiantMinMax
@@ -313,13 +313,12 @@ namespace SimSonic.Core
         }
 
         private Func<ProcessorRaidantEx, RadiantMinMax> FindOptimalDelay(Point3D point, Double impulseTime, 
-            CancellationToken cst, Double stepFactor = 0.01)
+            CancellationToken cst, Double step = 1e-9)
         {
             return it =>
             {
                 try
                 {
-
                     var traces = it.Domains
                         .AsParallel().WithCancellation(cst)
                         .Select(d => BuildTraces(_layers, d, point))
@@ -327,17 +326,9 @@ namespace SimSonic.Core
                     var alltraces = traces.SelectMany(t => t.Traces).ToList();
                     var ttps = alltraces.Select(tr => tr.TimeToPoint).ToArray();
 
-
                     var fromTime = ttps.Min();
                     var toTime = ttps.Max() + impulseTime;
-
-                    var targetLayer = traces[0].PointLayer;
-                    var minPeriod = targetLayer.WaveSpeed/_signals.Max(s => s.Frequency);
-                    var step = Math.Min(minPeriod, impulseTime) * stepFactor;
-                    
-
                     var time = fromTime;
-                    
                     var maxValue = .0;
                     var maxTime = .0;
                     var minValue = .0;
